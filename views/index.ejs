@@ -1,0 +1,506 @@
+<!DOCTYPE HTML> 
+<html lang="en"> 
+<head> 
+<title>Nowtable - The future of music</title> 
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"> 
+<meta http-equiv="Content-Language" content="en-us"> 
+
+<link href="/style.css" rel="stylesheet" type="text/css">
+<link type="text/css" href="/skin/jplayer.blue.monday.css" rel="stylesheet"/>
+<!--
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.min.js"></script>  
+-->
+<script type="text/javascript" src="/jquery-1.6.2.min.js"></script>
+<script type="text/javascript" src="/jquery.marquee.js"></script>
+<script type="text/javascript" src="/jquery.jplayer.min.js"></script>
+<script src="/nowjs/now.js"></script>
+<script type="text/javascript" src="/jquery.form.js"></script>
+<!-- begin the Javascript business -->
+<script type="text/javascript">
+
+var playing = false;
+var muted = false;
+
+$(document).ready(function(){
+
+	$('#loginsubmit').click(function() {
+		now.tryLogin($('#uname').val(), $('#pwd').val());
+	});
+	
+	$('#registersubmit').click(function() {
+		now.tryRegister($('#unamereg').val(), $('#pwdreg').val());
+	});
+	
+	now.openLogin = function() {
+		$('#addqueue').slideUp(200);
+   	$('#configdiv').slideUp(200);
+    	$('#upload').slideUp(200);
+   	$('#logindiv').slideToggle(200);
+	}
+	
+	now.openSettings = function() {
+		$('#addqueue').slideUp(200);
+   	$('#logindiv').slideUp(200);
+    	$('#upload').slideUp(200);
+   	$('#configdiv').slideToggle(200);
+	}
+	
+	//registers a new username/password
+	/*registerUser = function(username, password) {
+		$.post('/register', {uname: username, pwd: password});
+	}*/
+	
+	//logs in said user
+	/*loginUser = function(username, password) {
+		$.post('/login', {uname: username, pwd: password}); 
+	}*/
+	
+	now.giveData = function(cId, state) {
+		var state2 = "";
+		if ($("#jquery_jplayer_1").data("jPlayer").status.paused) {state2 = "pause";} else {state2 = "play";}
+		now.setSong(
+			cId, 
+			$("#jquery_jplayer_1").data("jPlayer").status.src, 
+			$("#jquery_jplayer_1").data("jPlayer").status.currentTime,
+			state
+		);
+	}
+	
+	now.setPlayButton = function(state) {
+		var btn = $('#playpause');
+		if (state == 'play') {
+			//animate play to pause
+			btn.stop().animate({opacity: 0}, 150, function(){
+        		btn.text("pause").animate({opacity: 1}, 300);
+      	});
+		} else {
+			//animate play to pause
+			btn.stop().animate({opacity: 0}, 150, function(){
+        		btn.text("play").animate({opacity: 1}, 300);
+      	});
+		}
+	}
+	
+	now.setStateKing = function(state) {
+		if (state == 'play') {
+			$("#jquery_jplayer_1").jPlayer("play");
+		} else {
+			$("#jquery_jplayer_1").jPlayer("pause");
+		}
+	}
+	
+	//this is a bug testing function. It simply prints out the King's song and time to the console.
+	now.reportSong = function() { 
+		now.songTest($("#jquery_jplayer_1").data("jPlayer").status.src, $("#jquery_jplayer_1").data("jPlayer").status.currentTime);
+	}
+
+	now.loadSong = function(songid, position, state) {
+		$("#jquery_jplayer_1").jPlayer("setMedia", { m4a: songid });
+		$("#jquery_jplayer_1").jPlayer( state, position);
+		everyone.now.setPlayButton(state);
+	}
+
+	now.onjoin = function(id, text){
+		var mydiv = $("<div></div>").attr("id", id).addClass("chat");
+		mydiv.hide();		
+		mydiv.appendTo($("#chatdiv"));
+		mydiv.text(text);
+		mydiv.slideDown(1000);
+	}
+	now.refreshtext = function(id, text) {
+		var div = $("#chatmessagediv");
+		//var div = $("#" + id);
+		div.append("<div class=\"textline\">" + id + ": "+ text + "</div>");
+		//div.animate({ scrollTop: div.attr("scrollHeight") }, 500);
+		$(".chat").scrollTop($(".chat")[0].scrollHeight);
+	}
+	
+	now.appendSong = function(text) {
+		var div = $("#songlistdiv");	
+		div.append("<div class=\"songline\">" + "<button type=\'button\' onclick=\"now.loadSong(\'\/play\/" + text + "\', 0, \'play\')\">" + text.split(".mp3")[0].split(".m4a")[0] + "</button></div>");
+		div.animate({ scrollTop: div.attr("scrollHeight") }, 500);
+	}
+	
+	now.appendQueue = function(text) {
+		var div = $("#addqueuelist");	
+		div.append("<li><div class=\"songline\"" + "onclick=\"now.addToQueue(\'\/play\/" + text + "\')\">" + text.split(".mp3")[0].split(".m4a")[0] + "</div></li>");
+		div.animate({ scrollTop: div.attr("scrollHeight") }, 500);
+	}
+	
+	now.displayQueueItem = function(uId, sId) {
+		var div = $("ul#queue");
+		var button1 = $("<a></a>").attr('href', '#').click(function(){
+			now.voteQueue(sId, 'up');
+		}).html('&#8679;');
+		var button2 = $("<a></a>").attr('href', '#').click(function(){
+			now.voteQueue(sId, 'down');
+		}).html('&#8681;');
+		
+		var li = $("<li></li>");
+		var s1 = $("<span></span>").addClass('qartist').text(uId);
+		var s2 = $("<span></span>").addClass('qtitle').text(sId.split("\/play\/")[1].split(".mp3")[0].split(".m4a")[0]);
+		li.append(button1).append(" - ").append(button2).append(" - ").append(s1).append(" - ").append(s2);
+	    div.append(li);	
+	}
+	
+	now.displayQueueItem1 = function(uId, sId) {
+		var div = $("ul#queue");
+		div.append("<li class='firstqueue' ><span class='q1artist'>" + uId + "</span> - <span class='q1title'>" + sId + "</span></li>");
+	}
+	
+	now.setTitleSong = function(uId, sId) {
+		var div = $("#text");
+		div.empty();
+		div.append("<marquee scrollamount='6' width='575'><span class='artist'>" + uId + "</span> - <span class='title'>" + sId.split("\/play\/")[1].split(".mp3")[0].split(".m4a")[0] + "</span></marquee>");
+	}
+	
+	now.wipeSongDiv = function() {
+		$("#addqueuelist").empty();
+	}
+	
+	now.wipeQueueDiv = function() {
+		$("#queue").empty();
+	}
+
+
+	
+	function update() {
+		try {
+			//$("#t").text(window);
+		} catch (e) {
+		
+		}
+		setTimeout(update, 500);
+	}
+	
+	now.displayUserItem = function(username, who, king, aristocrat) {
+		var div = $("#users");
+		if (who) {
+			if (king) {
+				if (aristocrat) {
+					div.append("<li><span class='usernameme'>" + username + " " + "&#9815" + " " + "&#9812;" + "</span></li>");
+				} else {
+					div.append("<li><span class='usernameme'>" + username + " " + "&#9812;" + "</span></li>");
+				}
+			} else {
+				if (aristocrat) {
+					div.append("<li><span class='usernameme'>" + username + " " + "&#9815" + "</span></li>");
+				} else {
+					div.append("<li><span class='usernameme'>" + username + "</span></li>");
+				}
+			}
+		} else {
+			if (king) {
+				if (aristocrat) {
+					div.append("<li><span class='username'>" + username + " " + "&#9815" + " " + "&#9812;" + "</span></li>");
+				} else {
+					div.append("<li><span class='username'>" + username + " " + "&#9812;" + "</span></li>");
+				}
+			} else {
+				if (aristocrat) {
+					div.append("<li><span class='username'>" + username + " " + "&#9815" + "</span></li>");
+				} else {
+					div.append("<li><span class='username'>" + username + "</span></li>");
+				}
+			}
+		}
+	}
+	
+	now.wipeUsersDiv = function() {
+		$("#users").empty();
+	}
+	
+	
+	/*now.requestNewUsername = function() {
+		var error = true;
+		var uname = "";
+		do {
+				if (error) {
+					uname = prompt("Username taken. Please enter a different name.","Slim Pickins");
+				} else {
+					uname = prompt("Please enter your name.","Slim Pickins");
+				}
+				error = false;
+			}
+			while (uname == "" || uname == null);
+			now.addToUsers(uname);
+	}*/
+	
+	now.reLoginAlert = function () {
+		alert("Wrong information");
+	}
+	
+	now.reRegisterAlert = function () {
+		alert("Pick another username");
+	}
+	now.ready(function(){
+		//now.onclientload();
+		$("#jquery_jplayer_1").jPlayer({
+        	ready: function () {
+       	},
+        	supplied: "mp3, m4a, oga",
+        	preload: "auto",
+        	volume: 1
+		});
+		/*$("#jquery_jplayer_1").bind($.jPlayer.event.play, function() { // Bind an event handler to the instance's play event.
+  			now.syncToMe("play"); // sync all other players to this one but play them.
+		});
+		$("#jquery_jplayer_1").bind($.jPlayer.event.pause, function() { // Bind an event handler to the instance's play event.
+  			now.syncToMe("pause"); // sync all other players to this one but pause them.
+		});*/
+		$("#jquery_jplayer_1").bind($.jPlayer.event.ended, function() { // Bind an event handler to the instance's play event.
+  			now.playNextSong(); // plays the next song, but checks to see if king. Only the king will tell everyone to change the song.
+		});
+		now.getSongList();
+		now.getQueueList();
+		var uname = "";
+		var pwd = "";
+		//now.getCurrentSong();
+		//loginUser(uname, pwd);
+		//now.getLogin(true);
+	});
+
+	now.deleteUser = function(id){
+		$("#" + id).remove();
+	}
+
+	//this just means append your text when you press enter.
+	$("#box").keypress(function(e){
+		if(e.which == '13') {
+			now.appendtext($("#box").val());
+			$("#box").val("");
+		}
+		
+	});	
+
+	/*
+  $('#playpause').click(function(){
+    var btn = $(this);
+    if(playing) {
+    	$("#jquery_jplayer_1").jPlayer("pause");
+      //btn.stop().animate({opacity: 0}, 150, function(){
+      //  btn.text("pause").animate({opacity: 1}, 300);
+      });
+    } else {
+    	$("#jquery_jplayer_1").jPlayer("play");
+      //btn.stop().animate({opacity: 0}, 150, function(){
+      //  btn.text("play").animate({opacity: 1}, 300);
+      });
+    }
+    playing = !playing;
+  });
+  
+  */
+  
+  $('#playpause').click(function() {
+  	if ($("#jquery_jplayer_1").data("jPlayer").status.paused) {
+  		
+  		now.kingStateChange('play');
+  	} else {
+  		now.kingStateChange('pause');
+  	}
+
+
+});
+  /*
+  $('#muteunmute').click(function(){
+  	console.log("Mute status: " + muted);
+    var btn = $(this);
+    if(muted) {
+    	$("#jquery_jplayer_1").jPlayer("volumeMax");
+      btn.stop().animate({opacity: 0}, 150, function(){
+        btn.text("mute").animate({opacity: 1}, 300);
+      });
+    } else {
+    	$("#jquery_jplayer_1").jPlayer("volumeMin");
+      btn.stop().animate({opacity: 0}, 150, function(){
+        btn.text("unmute").animate({opacity: 1}, 300);
+      });
+    }
+    muted = !muted;
+  });
+  */
+  $('#muteunmute').click(function() {
+  	console.log("Mute status: " + muted);
+  	var btn = $(this);
+  	if (muted) {
+  		$("#jquery_jplayer_1").jPlayer("unmute");
+  		btn.stop().animate({opacity: 0}, 150, function() {
+  			btn.text("mute").animate({opacity: 1}, 300);
+  		});
+  	} else {
+  		$("#jquery_jplayer_1").jPlayer("mute");
+  		btn.stop().animate({opacity: 0}, 150, function() {
+  			btn.text("unmute").animate({opacity: 1}, 300);
+  		});
+  	}
+  	muted = !muted;
+  });
+  
+  $('#addbtn').click(function(){
+    $('#upload').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#addqueue').slideToggle(200);
+  });
+ 
+  $('#uploadbtn').click(function(){
+    $('#addqueue').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#upload').slideToggle(200);
+  });
+  
+  $('#config').click(function(){
+  	 $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#configdiv').slideUp(200);
+  	 $('#logindiv').slideToggle(200);
+  	 $('#registerdiv').slideToggle(200);
+  });
+  
+  $('#closebtn').click(function(){
+    $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#registerdiv').slideUp(200);
+  });
+  
+  $('#closebtn1').click(function(){
+    $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#registerdiv').slideUp(200);
+  });
+  
+  $('#closebtn2').click(function(){
+    $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#registerdiv').slideUp(200);
+  });
+  
+  $('#closebtn3').click(function(){
+    $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#registerdiv').slideUp(200);
+  });
+  
+  $('#closebtn4').click(function(){
+    $('#upload').slideUp(200);
+    $('#addqueue').slideUp(200);
+    $('#configdiv').slideUp(200);
+    $('#logindiv').slideUp(200);
+    $('#registerdiv').slideUp(200);
+  });
+  
+});
+
+</script>
+</head> 
+ 
+<body> 
+
+
+<div id="main">
+  <div id="top">
+    <div id="text"><marquee scrollamount="6" width="575"><span class="artist">nothing</span> - <span class="title">nothing</span></marquee></div>
+    <div id="l"></div>
+    <div id="r"></div>
+  </div>
+  <div id="logo"><img src="images/logo.png"></div>
+  <div class="clear"></div>
+ 
+  <div id="upload">
+   <div class="right button" id="closebtn">close x</div>
+  	<div class="big">upload a new song</div>
+  	<form id="uploadForm" action="/upload" enctype="multipart/form-data" method="post">	
+				Title of the song: <input type="text" name="title" />	
+				<input type="file" name="song" /><br>
+				<input type="submit" value="Upload" />	
+	</form> 
+  </div>
+  <div id="addqueue">
+  	<div class="right button" id="closebtn1">close x</div>
+  	<div class="big">add to the song queue</div><div id="addqueuelist"></div>
+  </div>
+  
+  <div id="configdiv">
+   <div class="right button" id="closebtn2">close x</div>
+  	<div class="big">settings</div>
+  	<form name="namechangeform" action="" method="get">	
+				Change Username: <input type="text" name="uname"/>	
+				<input type="button" id="submitname" value="Submit" onclick="now.getCurrentSong()"/>	
+	</form> 
+  </div>
+  
+  <div id="logindiv">
+   <div class="right button" id="closebtn3">close x</div>
+  	<div class="big">login</div>
+  	<form name="loginform" action="/login" method="post">	
+				Username: <input type="text" id="uname" name="uname" placeholder="Slim Pickins"/></br>
+				Password: <input type="password" id="pwd" name="pwd"/></br>
+				<input type="button" id="loginsubmit" value="Login"/>	
+	</form> 
+  </div>
+  
+  <div id="registerdiv">
+   <div class="right button" id="closebtn4">close x</div>
+  	<div class="big">register</div>
+  	<form name="registerform" action="/register" method="post">	
+				Username: <input type="text" id="unamereg" name="uname" placeholder="Slim Pickins"/></br>
+				Password: <input type="password" id="pwdreg" name="pwd"/></br>
+				<input type="button" id="registersubmit" value="Register"/>	
+	</form> 
+  </div>
+  
+  <div id="content">
+  	<div class="button" id="playpause">play</div> <div class="button" id="muteunmute">mute</div>
+  	<!-- <div class="button" id="sync" onclick="now.getCurrentSong()">sync</div> -->
+  	<div class="button" id="next" onclick="now.playNextSong()">next</div>
+  	 <!--jplayer-->
+		<div id="jquery_jplayer_1" class="jp-jplayer"></div>
+			<div class="jp-audio">
+			<div class="jp-type-single">
+			<div id="jp_interface_1" class="jp-interface">
+				<div class="jp-progress">
+				  <div class="jp-seek-bar">
+					<div class="jp-play-bar"></div>
+				  </div>
+				</div>
+				<div class="jp-current-time"></div>
+				<div class="jp-duration"></div>
+			</div>
+		</div>
+	</div>
+	<!--end jplayer-->
+	<div id="chatdiv"><input placeholder="Type your message ..." type="text" id="box"></div>
+	<div id="chatmessagediv" class="chat"></div>  
+  </div>
+  <div id="sidebar">
+    <div id="player">
+      <div class="button" id="uploadbtn">upload</div>
+    </div>
+    <div class="clear"></div>
+    <div class="big"><div class="left">queue</div><div class="right button" id="addbtn">+</div><div class="clear"></div></div>
+    <ul id="queue">
+		
+    </ul>
+    <div class="big"><div class="left">users</div><div class="right button" id="config">&#9881;</div><div class="clear"></div></div>
+    <ul id="users">
+		
+    </ul>
+    <input type="button" id="becomeAristocrat" value="Become Aristocrat" onclick="now.becomeAristocrat()"/>
+  </div>
+  
+</div>
+
+<iframe src="http://localhost/index.html" width="250" height="200" id="i"></iframe>
+
+</body> 
+</html>
